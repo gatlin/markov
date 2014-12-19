@@ -2,6 +2,49 @@
 
 int main(int argc, char **argv) {
 
+    /***
+     * Redis test
+     */
+
+    puts("Redis test\n=====\n");
+
+    redisContext *c;
+    redisReply   *reply;
+
+    const char *hostname = "127.0.0.1";
+    int port = 6379;
+
+    struct timeval timeout = {1, 500000 }; // 1.5 seconds
+
+    c = redisConnectWithTimeout(hostname, port, timeout);
+    if (c == NULL || c->err) {
+        if (c) {
+            printf("Connection error: %s\n", c->errstr);
+            redisFree(c);
+        }
+        else {
+            printf("Connection error: can't allocate redis context\n");
+        }
+        exit(1);
+    }
+
+    /* PING server */
+    reply = redisCommand(c, "PING");
+    printf("PING: %s\n", reply->str);
+    freeReplyObject(reply);
+
+    /* Set a key */
+    reply = redisCommand(c, "SET %s %s",
+            "foo", "hello world");
+    printf("SET: %s\n", reply->str);
+    freeReplyObject(reply);
+
+    /***
+     * Markov model test
+     */
+
+    puts("\nMarkov test\n=====\n");
+
     /* Initialize the application */
     markov_init();
 
@@ -28,10 +71,40 @@ int main(int argc, char **argv) {
         idx = walk(m);
         printf(" -> %d", idx);
     }
-    printf("\n");
+    printf("\n\n");
+
+    /* Serialize model */
+    puts("Testing serialization\n");
+    m = serialize_model(m, c, "test_model");
+
+    /* Check serialization */
+    reply = redisCommand(c, "HKEYS test_model");
+    char *key;
+    uint64_t edge, v1, v2;
+    for (i = 0; i < reply->elements; i++) {
+        switch (reply->element[i]->type) {
+        case REDIS_REPLY_STRING:
+            if (!strncmp(reply->element[i]->str, "size", sizeof("size"))) {
+            }
+            else {
+                edge = (uint64_t) atol(reply->element[i]->str);
+                v1 = edge >> 32;
+                v2 = edge & 0xFFFFFFFF;
+
+                printf("Read edge %d -> %lu\n", v1, v2);
+            }
+
+            break;
+        default:
+            printf("Error\n");
+        }
+    }
+    freeReplyObject(reply);
 
     del_model(m);
     del_graph(gr);
+
+    redisFree(c);
     return 0;
 }
 

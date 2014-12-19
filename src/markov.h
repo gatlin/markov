@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <time.h> /* time() will be the random seed */
+#include <hiredis.h>
+#include <arpa/inet.h>
 
 typedef int boolean;
 #define TRUE 1

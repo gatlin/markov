@@ -64,3 +64,27 @@ uint32_t walk(Model *m) {
     }
     coro_finish;
 }
+
+Model *serialize_model(Model *m, redisContext *ctx, char *key) {
+    redisReply *reply;
+    uint64_t edge, v1, v2;
+    int i, j;
+    reply = redisCommand(ctx, "HSET %s size %d",
+            key,
+            m->size);
+    freeReplyObject(reply);
+    for (i = 0; i < m->size; i++) {
+        v1 = (uint64_t) i;
+        for (j = 0; j < m->states[i]->size; j++) {
+            v2 = (uint64_t) m->states[i]->edges[j].dest;
+            printf("Wrote edge %lu -> %lu\n", v1, v2);
+            edge = ((v1 << 32 | v2));
+            reply = redisCommand(ctx, "HSET %s %lu %f",
+                    key,
+                    edge,
+                    m->states[i]->edges[j].score);
+            freeReplyObject(reply);
+        }
+    }
+    return m;
+}

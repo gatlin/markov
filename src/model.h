@@ -22,6 +22,7 @@ Model * new_model_from_graph(Graph *gr);
 void del_model(Model *m);
 uint32_t random_neighbor(Model *m, uint32_t src);
 uint32_t walk(Model *m);
+Model *serialize_model(Model *m, redisContext *ctx, char *key);
 
 #endif /* __MODEL_H */
 
